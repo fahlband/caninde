@@ -36,23 +36,24 @@ docker compose up -d --build
 | Serviço         | Endereço              | Observação                                         |
 | --------------- | --------------------- | -------------------------------------------------- |
 | Gateway (Envoy) | http://localhost:8000 | Entrada única da API                               |
+| API (container) | não publicada         | Acessada somente pelo gateway (ADR-0003)           |
 | Keycloak        | http://localhost:8080 | Admin: `admin` / `admin` (somente desenvolvimento) |
 | Mailpit         | http://localhost:8025 | Caixa de e-mails local (recuperação de senha)      |
 | PostgreSQL      | `localhost:5432`      | Banco `caninde`, usuário `caninde`                 |
 
-**3. Rodar a API e o frontend**
+**3. Rodar o frontend**
 
-Em terminais separados:
+O pacote `shared` precisa de build antes da primeira execução da API (`pnpm build`). Em seguida:
 
 ```bash
-pnpm --filter @caninde/api dev   # API em http://localhost:3001
 pnpm --filter @caninde/web dev   # frontend em http://localhost:3000
 ```
+
+Para depurar a API na sua máquina, pare o container com `docker compose stop api` e rode `pnpm --filter @caninde/api dev`. Enquanto isso, o gateway não encaminha chamadas para a API, então teste direto em `http://localhost:3001`.
 
 **4. Verificar**
 
 ```bash
-curl http://localhost:3001/api/v1/health   # direto na API
 curl http://localhost:8000/api/v1/health   # pelo gateway
 ```
 
