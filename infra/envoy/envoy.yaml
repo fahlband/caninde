@@ -1,0 +1,128 @@
+# Gateway de entrada (ADR-0004). Valida o JWT, consulta o OPA e encaminha para a API.
+static_resources:
+  listeners:
+    - name: ingress
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 8000
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress
+                codec_type: AUTO
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: api
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            prefix: "/api/v1/"
+                          route:
+                            cluster: api
+                http_filters:
+                  # 1. Autenticação: valida assinatura, iss e aud contra o JWKS do Keycloak.
+                  - name: envoy.filters.http.jwt_authn
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
+                      providers:
+                        keycloak:
+                          issuer: http://localhost:8080/realms/caninde
+                          audiences:
+                            - caninde-api
+                          forward: true
+                          payload_in_metadata: payload
+                          from_headers:
+                            - name: Authorization
+                              value_prefix: "Bearer "
+                          remote_jwks:
+                            http_uri:
+                              uri: http://keycloak:8080/realms/caninde/protocol/openid-connect/certs
+                              cluster: keycloak_jwks
+                              timeout: 5s
+                            cache_duration: 300s
+                      rules:
+                        # Health check é público e não exige token.
+                        - match:
+                            prefix: "/api/v1/health"
+                        # Busca funciona sem login (HU-08): token é opcional, mas se vier deve ser válido.
+                        - match:
+                            prefix: "/api/v1/search"
+                          requires:
+                            requires_any:
+                              requirements:
+                                - provider_name: keycloak
+                                - allow_missing: {}
+                        - match:
+                            prefix: "/"
+                          requires:
+                            provider_name: keycloak
+                  # 2. Autorização por rota: consulta o OPA com as claims do JWT.
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: opa
+                        timeout: 0.5s
+                      failure_mode_allow: false
+                      metadata_context_namespaces:
+                        - envoy.filters.http.jwt_authn
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: api
+      type: STRICT_DNS
+      connect_timeout: 2s
+      load_assignment:
+        cluster_name: api
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: host.docker.internal
+                      port_value: 3001
+
+    - name: keycloak_jwks
+      type: STRICT_DNS
+      connect_timeout: 2s
+      load_assignment:
+        cluster_name: keycloak_jwks
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: keycloak
+                      port_value: 8080
+
+    - name: opa
+      type: STRICT_DNS
+      connect_timeout: 2s
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: opa
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: opa
+                      port_value: 9191
+
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901

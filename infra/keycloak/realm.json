@@ -1,0 +1,70 @@
+{
+  "realm": "caninde",
+  "enabled": true,
+  "registrationAllowed": true,
+  "resetPasswordAllowed": true,
+  "verifyEmail": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "nao-responda@caninde.local",
+    "fromDisplayName": "Caninde (local)",
+    "auth": "false",
+    "starttls": "false",
+    "ssl": "false"
+  },
+  "roles": {
+    "realm": [
+      { "name": "platform_admin", "description": "Administrador da plataforma" },
+      { "name": "gestor_prefeitura", "description": "Gestor de um município" },
+      { "name": "empresa", "description": "Dono de empresa cadastrada" },
+      { "name": "consumidor", "description": "Usuário que busca serviços" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "caninde-api",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "protocolMappers": [
+        {
+          "name": "audience-caninde-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "caninde-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@caninde.local",
+      "email": "admin@caninde.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Local",
+      "realmRoles": ["platform_admin"],
+      "credentials": [{ "type": "password", "value": "admin123", "temporary": false }]
+    },
+    {
+      "username": "consumidor@caninde.local",
+      "email": "consumidor@caninde.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Consumidor",
+      "lastName": "Local",
+      "realmRoles": ["consumidor"],
+      "credentials": [{ "type": "password", "value": "consumidor123", "temporary": false }]
+    }
+  ]
+}

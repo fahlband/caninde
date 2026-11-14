@@ -1,0 +1,68 @@
+# Ambiente local (ADR-0003). Credenciais abaixo são apenas para desenvolvimento.
+name: caninde
+
+services:
+  postgres:
+    # Imagem própria (PostgreSQL 16 + PostGIS), pois a imagem postgis/postgis não tem build arm64 para a versão 16.
+    build: ./infra/postgres
+    environment:
+      POSTGRES_DB: caninde
+      POSTGRES_USER: caninde
+      POSTGRES_PASSWORD: caninde
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/caninde
+      KC_DB_USERNAME: caninde
+      KC_DB_PASSWORD: caninde
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      - postgres
+
+  opa:
+    image: openpolicyagent/opa:1.22.3-envoy-static
+    command:
+      - run
+      - --server
+      - --addr=:8181
+      - --set=plugins.envoy_ext_authz_grpc.addr=:9191
+      - --set=decision_logs.console=true
+      - /policies
+    volumes:
+      - ./infra/opa:/policies:ro
+
+  envoy:
+    image: envoyproxy/envoy:v1.39.6
+    command: ["-c", "/etc/envoy/envoy.yaml"]
+    ports:
+      - "8000:8000"
+      - "9901:9901"
+    extra_hosts:
+      # A API roda na máquina host durante o desenvolvimento.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./infra/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    depends_on:
+      - keycloak
+      - opa
+
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  pgdata:
