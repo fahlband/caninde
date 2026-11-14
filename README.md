@@ -96,5 +96,8 @@ Para parar o ambiente local: `docker compose down`. Use `docker compose down -v`
 
 - Escreva documentação e comentários em português do Brasil.
 - Rode `pnpm lint`, `pnpm typecheck` e `pnpm test` antes de abrir um PR.
+- A `main` é protegida: toda mudança entra por PR, com pelo menos 1 aprovação.
+- Mensagens de commit e títulos de PR seguem [Conventional Commits](https://www.conventionalcommits.org/pt-br/) (`tipo(escopo): descrição`, por exemplo `feat(search): adiciona busca por voz`). O hook `commit-msg` valida localmente após o `pnpm install`, e o workflow `Conventional Commits` valida no PR.
+- Preencha o template de PR (`.github/pull_request_template.md`).
 - Mudanças de arquitetura pedem um novo ADR em `docs/adr/`.
 - Todo PR é revisado pelo responsável definido em [`.github/CODEOWNERS`](.github/CODEOWNERS).
