@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint . --max-warnings=0"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.13",

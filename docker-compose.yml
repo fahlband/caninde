@@ -13,6 +13,29 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caninde -d caninde"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      API_PORT: 3001
+      DATABASE_URL: postgresql://caninde:caninde@postgres:5432/caninde
+      # O issuer é o que o Keycloak grava no claim iss; o JWKS é buscado pela rede do Compose.
+      AUTH_ISSUER_URL: http://localhost:8080/realms/caninde
+      AUTH_JWKS_URL: http://keycloak:8080/realms/caninde/protocol/openid-connect/certs
+      AUTH_AUDIENCE: caninde-api
+    # Sem "ports": a API não é publicada, todas as chamadas passam pelo Envoy (ADR-0003).
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.2
@@ -49,12 +72,10 @@ services:
     ports:
       - "8000:8000"
       - "9901:9901"
-    extra_hosts:
-      # A API roda na máquina host durante o desenvolvimento.
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./infra/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     depends_on:
+      - api
       - keycloak
       - opa
 

@@ -1,0 +1,12 @@
+# Contexto de build enviado ao Docker. Mantém a imagem e o cache enxutos (HU-01.3).
+**/node_modules
+**/dist
+**/.next
+**/coverage
+.git
+.github
+.claude
+.env
+.env.*
+!.env.example
+**/*.log
