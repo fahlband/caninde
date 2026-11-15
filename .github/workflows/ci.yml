@@ -17,7 +17,8 @@ jobs:
   qualidade:
     name: Lint, tipos, testes e build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Os testes de integração constroem a imagem do PostgreSQL (Testcontainers).
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +38,42 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+  migracoes:
+    name: Schema Prisma sem migração pendente
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      # Banco shadow descartável: o Prisma aplica as migrações nele para comparar com o schema.
+      shadow:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_USER: caninde
+          POSTGRES_PASSWORD: caninde
+          POSTGRES_DB: caninde_shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U caninde -d caninde_shadow"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Falha quando o schema.prisma mudou sem uma nova migração.
+      - run: pnpm --filter @caninde/api db:check
+        env:
+          SHADOW_DATABASE_URL: postgresql://caninde:caninde@localhost:5432/caninde_shadow
 
   politicas:
     name: Testes das políticas OPA

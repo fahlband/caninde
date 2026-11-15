@@ -1,0 +1,13 @@
+// Schema do banco (ADR-0001). Mudanças entram só por nova migração: nunca edite uma
+// migração já criada. A URL de conexão fica em prisma.config.ts.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
