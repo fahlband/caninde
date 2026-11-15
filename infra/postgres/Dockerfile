@@ -5,3 +5,6 @@ FROM postgres:16
 RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-16-postgis-3 \
     && rm -rf /var/lib/apt/lists/*
+
+# Bancos auxiliares do ambiente local (keycloak e shadow do Prisma).
+COPY initdb/ /docker-entrypoint-initdb.d/

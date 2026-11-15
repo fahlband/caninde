@@ -78,11 +78,24 @@ curl -s -X POST http://localhost:8080/realms/caninde/protocol/openid-connect/tok
 | ----------------------------------- | ------------------------------------------------ |
 | `pnpm dev`                          | Roda API e frontend em paralelo                  |
 | `pnpm build`                        | Compila todos os pacotes                         |
-| `pnpm test`                         | Testes unitários da API                          |
+| `pnpm test`                         | Testes da API (integração exige Docker)          |
 | `pnpm test:policies`                | Testes das políticas OPA (exige o binário `opa`) |
 | `pnpm lint`                         | ESLint em todos os pacotes                       |
 | `pnpm typecheck`                    | Verificação de tipos em todos os pacotes         |
 | `pnpm format` / `pnpm format:check` | Formata ou verifica com Prettier                 |
+
+### Banco de dados (Prisma Migrate)
+
+Rode na pasta raiz, com o `docker compose up` ligado e o `.env` copiado de `.env.example`.
+
+| Comando                                  | O que faz                                                             |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `pnpm --filter @caninde/api db:migrate`  | Cria uma nova migração a partir do `schema.prisma` e a aplica (local) |
+| `pnpm --filter @caninde/api db:deploy`   | Aplica as migrações pendentes (CI, staging e produção)                |
+| `pnpm --filter @caninde/api db:check`    | Falha se o `schema.prisma` mudou sem nova migração (roda no CI)       |
+| `pnpm --filter @caninde/api db:generate` | Gera o Prisma Client em `apps/api/src/generated/` (fora do git)       |
+
+Nunca edite uma migração já aplicada: toda mudança vira uma nova migração. Se o seu volume do Postgres foi criado antes dos bancos `keycloak` e `caninde_shadow` existirem, recrie-o com `docker compose down -v`.
 
 Sem o binário `opa` instalado, rode os testes de políticas pelo container:
 
